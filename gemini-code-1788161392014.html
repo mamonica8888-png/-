@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自主維修智慧約修網頁系統 v4.20 彈性保留名單與上傳日期篩選版</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS CDN (Excel 解析與匯出) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        .toast-enter { transform: translateY(-100%); opacity: 0; }
+        .toast-enter-active { transform: translateY(0); opacity: 1; transition: all 0.3s ease; }
+        /* --- 動態顯示面板大小設定 --- */
+        body.size-sm { font-size: 11px; }
+        body.size-sm h1 { font-size: 0.9rem !important; }
+        body.size-sm .panel-main-num { font-size: 1.25rem !important; }
+        body.size-sm .panel-title { font-size: 0.8rem !important; }
+        body.size-sm .card-text { font-size: 0.75rem !important; }
+        body.size-sm table th, body.size-sm table td { padding: 0.5rem !important; font-size: 0.75rem !important; }
+                
+        body.size-md { font-size: 14px; }
+        body.size-md h1 { font-size: 1rem !important; }
+        body.size-md .panel-main-num { font-size: 2rem !important; }
+        body.size-md .panel-title { font-size: 1rem !important; }
+        body.size-md .card-text { font-size: 0.875rem !important; }
+        body.size-md table th, body.size-md table td { padding: 0.75rem !important; font-size: 0.875rem !important; }
+                
+        body.size-lg { font-size: 16px; }
+        body.size-lg h1 { font-size: 1.25rem !important; }
+        body.size-lg .panel-main-num { font-size: 2.75rem !important; }
+        body.size-lg .panel-title { font-size: 1.25rem !important; }
+        body.size-lg .card-text { font-size: 1rem !important; }
+        body.size-lg table th, body.size-lg table td { padding: 1rem !important; font-size: 1rem !important; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-12 size-md" id="appBody">
+    <!-- 頂部導覽列 -->
+    <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-30 border-b border-indigo-800">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-400 p-2 rounded-lg text-slate-900 font-bold shadow">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-bold tracking-wide">自主維修智慧約修網頁系統</h1>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span class="bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-full font-mono">v4.20 彈性保留名單與上傳日期篩選版</span>
+                        <span id="saveStatusIndicator" class="text-xs text-indigo-200 flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>已自動存檔 (能量固定保留)
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center gap-1 bg-indigo-950/60 px-2 py-1 rounded-lg border border-indigo-700 text-xs text-indigo-200">
+                    <span>🔍 顯示大小：</span>
+                    <button onclick="setDisplaySize('sm')" id="sizeBtn_sm" class="px-1.5 py-0.5 rounded text-indigo-300 hover:bg-indigo-800 transition">小</button>
+                    <button onclick="setDisplaySize('md')" id="sizeBtn_md" class="px-1.5 py-0.5 rounded bg-indigo-800 text-white font-bold transition">中</button>
+                    <button onclick="setDisplaySize('lg')" id="sizeBtn_lg" class="px-1.5 py-0.5 rounded text-indigo-300 hover:bg-indigo-800 transition">大</button>
+                </div>
+                <div class="text-xs bg-indigo-950/60 px-3 py-1.5 rounded-lg border border-indigo-700 font-mono text-indigo-200 hidden sm:block" id="liveClock">
+                    系統時間：00:00:00
+                </div>
+                <label class="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1 shadow">
+                    📁 匯入名單 (彈性保留)
+                    <input type="file" id="importLeadsInputTop" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleLeadsImport(event)">
+                </label>
+                <button onclick="exportEnergyTable()" class="bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg font-medium transition shadow flex items-center gap-1">
+                    📊 匯出能量設定
+                </button>
+                <button onclick="handleSecureUpload()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition shadow flex items-center gap-1">
+                    📤 上傳 (0000)
+                </button>
+                <button onclick="confirmReset()" class="bg-slate-700 hover:bg-slate-800 text-slate-200 px-3 py-1.5 rounded-lg font-medium transition">
+                    🔄 重載
+                </button>
+                <button onclick="openAnalysisModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition shadow">
+                    📈 分析
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 mt-6 space-y-6" id="mainContentContainer">
+        <!-- 上方系統台與今日能量概況卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <div class="flex justify-between items-center card-text text-slate-500 font-medium">
+                    <span>⚡ 今日預約能量現況 (即時串聯)</span>
+                    <span class="text-emerald-600 font-bold" id="headerRemainingBadge">額度充足</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-amber-50 p-2 rounded-lg border border-amber-200">
+                        <div class="card-text text-amber-800 font-medium">☀️ 早班</div>
+                        <div class="text-sm font-bold text-slate-700 mt-0.5 panel-main-num" id="statMorningText">0/2</div>
+                    </div>
+                    <div class="bg-amber-50 p-2 rounded-lg border border-amber-200">
+                        <div class="card-text text-amber-800 font-medium">🌤️ 午班</div>
+                        <div class="text-sm font-bold text-slate-700 mt-0.5 panel-main-num" id="statAfternoonText">0/3</div>
+                    </div>
+                    <div class="bg-amber-50 p-2 rounded-lg border border-amber-200">
+                        <div class="card-text text-amber-800 font-medium">🌙 晚班</div>
+                        <div class="text-sm font-bold text-slate-700 mt-0.5 panel-main-num" id="statEveningText">0/1</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 106 系統台 (客編 7 開頭) -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start gap-2">
+                    <div>
+                        <div class="font-bold text-slate-800 panel-title">106 系統台 <span class="card-text font-normal text-slate-500">(客編7開頭)</span></div>
+                        <div class="font-black text-indigo-600 mt-1 panel-main-num" id="statSys106">0 <span class="card-text font-normal text-slate-500">筆總數</span></div>
+                    </div>
+                    <span class="bg-indigo-50 text-indigo-700 card-text px-2 py-0.5 rounded font-mono border border-indigo-200">主系統</span>
+                </div>
+                <div class="mt-3 flex justify-between card-text text-slate-500 border-t border-slate-100 pt-2 font-medium">
+                    <span id="statSys106Booked" class="text-emerald-700 font-semibold cursor-pointer hover:underline" onclick="filterBookedBySystem('106')">✅ 已約：0 筆 🔍(點擊連動)</span>
+                    <span class="text-slate-400">自動辨識 7 開頭</span>
+                </div>
+            </div>
+
+            <!-- 206 系統台 (客編 2 開頭) -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start gap-2">
+                    <div>
+                        <div class="font-bold text-slate-800 panel-title">206 系統台 <span class="card-text font-normal text-slate-500">(客編2開頭)</span></div>
+                        <div class="font-black text-indigo-600 mt-1 panel-main-num" id="statSys260">0 <span class="card-text font-normal text-slate-500">筆總數</span></div>
+                    </div>
+                    <span class="bg-indigo-50 text-indigo-700 card-text px-2 py-0.5 rounded font-mono border border-indigo-200">主系統</span>
+                </div>
+                <div class="mt-3 flex justify-between card-text text-slate-500 border-t border-slate-100 pt-2 font-medium">
+                    <span id="statSys260Booked" class="text-emerald-700 font-semibold cursor-pointer hover:underline" onclick="filterBookedBySystem('206')">✅ 已約：0 筆 🔍(點擊連動)</span>
+                    <span class="text-slate-400">自動辨識 2 開頭</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 專屬能量統計表 (區分 206 與 106 已下筆數) -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                <div class="flex items-center gap-2 font-bold text-slate-800 card-text">
+                    <span>📊</span>
+                    <span>專屬能量統計表 (206 與 106 系統臺已下筆數統計)</span>
+                </div>
+                <div class="text-xs text-slate-500 font-mono">實時同步更新</div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col justify-between">
+                    <div class="text-xs text-slate-500 font-medium">本週總配置能量容量</div>
+                    <div class="text-xl font-bold text-slate-800 mt-1" id="energyStatTotalCap">0 席</div>
+                </div>
+                <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex flex-col justify-between">
+                    <div class="text-xs text-emerald-800 font-medium">106 系統臺已下筆數 (7開頭)</div>
+                    <div class="text-xl font-bold text-emerald-900 mt-1" id="energyStat106">0 筆</div>
+                </div>
+                <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-200 flex flex-col justify-between">
+                    <div class="text-xs text-indigo-800 font-medium">206 系統臺已下筆數 (2開頭)</div>
+                    <div class="text-xl font-bold text-indigo-900 mt-1" id="energyStat206">0 筆</div>
+                </div>
+                <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col justify-between">
+                    <div class="text-xs text-amber-800 font-medium">本週剩餘可約能量</div>
+                    <div class="text-xl font-bold text-amber-900 mt-1" id="energyStatRemaining">0 席</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 智慧約修【矩陣式能量週表】 -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 pb-3">
+                <div class="flex items-center gap-2 font-bold text-slate-800 card-text">
+                    <span>📅</span>
+                    <span>智慧約修【矩陣式能量週表】 (可點擊「⚙️ 設容量」修改單日容量，點擊「+ 可預約」指派客戶)</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="changeWeek(-1)" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-3 py-1 rounded-lg font-medium text-xs transition shadow-sm">◀ 上一週</button>
+                    <button onclick="resetWeek()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1 rounded-lg font-medium text-xs transition shadow-sm">本週</button>
+                    <button onclick="changeWeek(1)" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-3 py-1 rounded-lg font-medium text-xs transition shadow-sm">下一週 ▶</button>
+                    <span id="currentWeekRangeLabel" class="text-xs text-slate-500 font-mono ml-2"></span>
+                </div>
+            </div>
+
+            <!-- 整批修改控制列 -->
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-wrap items-center gap-4">
+                <span class="font-semibold text-slate-700 card-text">⚡ 全週預設容量基準 (需密碼)：</span>
+                <div class="flex items-center gap-2 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200 card-text">
+                    <span class="text-amber-800 font-medium">☀️ 早時段容量</span>
+                    <button onclick="changeBatch('morning', -1)" class="w-5 h-5 bg-white rounded shadow-sm font-bold text-amber-700 hover:bg-amber-100">-</button>
+                    <span id="batch-morning" class="font-bold text-amber-900 w-5 text-center">2</span>
+                    <button onclick="changeBatch('morning', 1)" class="w-5 h-5 bg-white rounded shadow-sm font-bold text-amber-700 hover:bg-amber-100">+</button>
+                </div>
+                <div class="flex items-center gap-2 bg-sky-50 px-3 py-1 rounded-lg border border-sky-200 card-text">
+                    <span class="text-sky-800 font-medium">🌤️ 午時段容量</span>
+                    <button onclick="changeBatch('afternoon', -1)" class="w-5 h-5 bg-white rounded shadow-sm font-bold text-sky-700 hover:bg-sky-100">-</button>
+                    <span id="batch-afternoon" class="font-bold text-sky-900 w-5 text-center">3</span>
+                    <button onclick="changeBatch('afternoon', 1)" class="w-5 h-5 bg-white rounded shadow-sm font-bold text-sky-700 hover:bg-sky-100">+</button>
+                </div>
+                <div class="flex items-center gap-2 bg-purple-50 px-3 py-1 rounded-lg border border-purple-200 card-text">
+                    <span class="text-purple-800 font-medium">🌙 晚時段容量</span>
+                    <button onclick="changeBatch('evening', -1)" class="w-5 h-5 bg-white rounded shadow-sm font-bold text-purple-700 hover:bg-purple-100">-</button>
+                    <span id="batch-evening" class="font-bold text-purple-900 w-5 text-center">1</span>
+                    <button onclick="changeBatch('evening', 1)" class="w-5 h-5 bg-white rounded shadow-sm font-bold text-purple-700 hover:bg-purple-100">+</button>
+                </div>
+            </div>
+
+            <!-- 矩陣式表格 -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse border border-slate-200">
+                    <thead id="matrixTableHead" class="bg-slate-100 text-slate-700 uppercase font-mono text-xs"></thead>
+                    <tbody id="matrixTableBody" class="divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 客戶資料表單區塊 -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-3">
+            <div class="p-4 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3 bg-slate-50">
+                <div class="flex items-center gap-2">
+                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm">
+                        📊 客戶約修對照總表 (含上傳日期紀錄)
+                    </button>
+                    <div id="activeEnergyFilterBanner" class="hidden items-center gap-2 bg-indigo-50 border border-indigo-300 text-indigo-800 px-3 py-1 rounded-lg">
+                        <span id="activeEnergyFilterText" class="font-semibold"></span>
+                        <button onclick="clearEnergyFilter()" class="text-indigo-600 hover:text-indigo-900 font-bold ml-1">&times; 清除能量篩選</button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="clearAllFilters()" class="bg-rose-100 hover:bg-rose-200 text-rose-800 px-3 py-2 rounded-lg font-semibold transition flex items-center gap-1 shadow-sm card-text">
+                        🧹 清除所有篩選
+                    </button>
+                    <button onclick="exportData()" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 rounded-lg font-medium transition flex items-center gap-1 shadow-sm">
+                        💾 匯出 Excel
+                    </button>
+                </div>
+            </div>
+
+            <!-- 篩選與搜尋列 -->
+            <div class="px-4 pb-2 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-1.5 card-text">
+                    <span class="text-slate-500 font-medium mr-1">▼ 狀態快篩：</span>
+                    <button onclick="filterStatus('all')" id="filterBtn_all" class="px-3 py-1 rounded-full bg-slate-800 text-white font-semibold transition shadow-sm">全部名單</button>
+                    <button onclick="filterStatus('未去電')" id="filterBtn_未去電" class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition">📞 待撥打</button>
+                    <button onclick="filterStatus('去電無人')" id="filterBtn_去電無人" class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition">⏳ 去電無人</button>
+                    <button onclick="filterStatus('其它')" id="filterBtn_其它" class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition">💬 其它</button>
+                    <button onclick="filterStatus('客戶不需要')" id="filterBtn_客戶不需要" class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition">🚫 客戶不需要</button>
+                    <button onclick="filterStatus('近期已派員')" id="filterBtn_近期已派員" class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition">⏱️ 近期已派員</button>
+                    <button onclick="filterStatus('已約')" id="filterBtn_已約" class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition">✅ 已預約</button>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1 card-text">
+                        <span class="text-slate-500 font-medium">📁 日期：</span>
+                        <select id="uploadDateFilterSelect" onchange="renderTable()" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-slate-700 outline-none shadow-sm">
+                            <option value="all">全部上傳日期</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-1 card-text">
+                        <span class="text-slate-500 font-medium">🖥️ 系統：</span>
+                        <select id="systemFilterSelect" onchange="renderTable()" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-slate-700 outline-none shadow-sm">
+                            <option value="all">全部系統台</option>
+                            <option value="106">106 系統台 (7開頭)</option>
+                            <option value="206">206 系統台 (2開頭)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-1 card-text">
+                        <span class="text-slate-500 font-medium">👤 人員：</span>
+                        <select id="staffFilterSelect" onchange="renderTable()" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-slate-700 outline-none shadow-sm">
+                            <option value="all">全部人員</option>
+                        </select>
+                    </div>
+                    <input type="text" id="searchInput" oninput="renderTable()" placeholder="搜尋訂編 / 備註..." class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-700 w-36 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm">
+                </div>
+            </div>
+
+            <!-- 表格 -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-100 text-slate-600 border-y border-slate-200 uppercase font-mono">
+                        <tr>
+                            <th class="p-3">上傳日期</th>
+                            <th class="p-3">系統台</th>
+                            <th class="p-3">行政區 / Node</th>
+                            <th class="p-3">訂編 (客編)</th>
+                            <th class="p-3">服務別</th>
+                            <th class="p-3">派工原因</th>
+                            <th class="p-3">人員</th>
+                            <th class="p-3">去電紀錄</th>
+                            <th class="p-3">預約日期</th>
+                            <th class="p-3">預約時段</th>
+                            <th class="p-3">約工備註</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leadsTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: 從矩陣點擊「+可預約」時彈出選擇未預約客戶 -->
+    <div id="assignModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 id="assignModalTitle" class="font-bold text-slate-800 card-text">指派客戶至指定時段</h3>
+                <button onclick="closeAssignModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-3 card-text">
+                <p class="text-slate-500 text-xs">請從下方「尚未預約」的客戶清單中勾選或點擊以指派預約：</p>
+                <input type="text" id="assignSearchInput" oninput="renderUnbookedList()" placeholder="搜尋未約客戶訂編..." class="w-full border rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-xs">
+                <div class="max-h-64 overflow-y-auto divide-y divide-slate-100 border rounded-xl" id="unbookedListContainer"></div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeAssignModal()" class="px-4 py-1.5 rounded-xl border text-slate-600 hover:bg-slate-100 transition card-text">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: 修改單日容量設定 -->
+    <div id="dayCapacityModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 id="dayCapacityModalTitle" class="font-bold text-slate-800 card-text">修改單日各班容量</h3>
+                <button onclick="closeDayCapacityModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-3 card-text">
+                <p class="text-xs text-slate-500">調整此特定日期的早、午、晚時段總能量容量：</p>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center bg-amber-50 p-2 rounded-lg border border-amber-200">
+                        <span>☀️ 早時段容量</span>
+                        <input type="number" id="inputCapMorning" min="0" max="20" class="w-16 border rounded px-2 py-1 text-center font-bold">
+                    </div>
+                    <div class="flex justify-between items-center bg-sky-50 p-2 rounded-lg border border-sky-200">
+                        <span>🌤️ 午時段容量</span>
+                        <input type="number" id="inputCapAfternoon" min="0" max="20" class="w-16 border rounded px-2 py-1 text-center font-bold">
+                    </div>
+                    <div class="flex justify-between items-center bg-purple-50 p-2 rounded-lg border border-purple-200">
+                        <span>🌙 晚時段容量</span>
+                        <input type="number" id="inputCapEvening" min="0" max="20" class="w-16 border rounded px-2 py-1 text-center font-bold">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeDayCapacityModal()" class="px-4 py-1.5 rounded-xl border text-slate-600 hover:bg-slate-100 transition card-text">取消</button>
+                <button onclick="saveDayCapacity()" class="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition card-text font-bold">儲存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: 系統台約修分析 -->
+    <div id="analysisModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-slate-800 card-text">📈 系統台約修數據分析</h3>
+                <button onclick="closeAnalysisModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+            </div>
+            <div id="analysisContent" class="space-y-3 card-text text-slate-600"></div>
+            <div class="pt-2 text-right">
+                <button onclick="closeAnalysisModal()" class="bg-indigo-600 text-white px-4 py-1.5 rounded-lg font-medium card-text">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 輕量通知 -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <script>
+        let currentFilterStatus = 'all';
+        let currentEnergyFilter = { date: null, shift: null };
+        let weekOffset = 0;
+        let leadsData = [];
+        let energyConfig = {
+            batchLimits: { morning: 2, afternoon: 3, evening: 1 },
+            dailyOverrides: {}
+        };
+        const STORAGE_KEY_LEADS = 'smart_repair_leads_v420';
+        const STORAGE_KEY_ENERGY = 'smart_repair_energy_v420';
+        const STORAGE_KEY_SIZE = 'smart_repair_size_v420';
+        let saveDebounceTimer = null;
+        let targetingSlot = { date: null, shift: null };
+        let editingCapacityDate = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFromStorage();
+            initClock();
+            updateStaffDropdown();
+            updateUploadDateDropdown();
+            renderMatrixWeeklyTable();
+            renderTable();
+            updateHeaderStats();
+        });
+
+        function setDisplaySize(size) {
+            const body = document.getElementById('appBody');
+            body.className = body.className.replace(/size-(sm|md|lg)/g, `size-${size}`);
+            
+            ['sm', 'md', 'lg'].forEach(s => {
+                const btn = document.getElementById(`sizeBtn_${s}`);
+                if (!btn) return;
+                if (s === size) {
+                    btn.className = "px-1.5 py-0.5 rounded bg-indigo-800 text-white font-bold transition";
+                } else {
+                    btn.className = "px-1.5 py-0.5 rounded text-indigo-300 hover:bg-indigo-800 transition";
+                }
+            });
+
+            localStorage.setItem(STORAGE_KEY_SIZE, size);
+            showToast(`🔍 顯示大小已調整為：${size === 'sm' ? '小' : size === 'md' ? '中' : '大'}`, 'success');
+        }
+
+        function initClock() {
+            setInterval(() => {
+                const now = new Date();
+                const timeStr = now.toTimeString().split(' ')[0];
+                const clockEl = document.getElementById('liveClock');
+                if (clockEl) clockEl.innerText = `系統時間：${timeStr}`;
+            }, 1000);
+        }
+
+        function verifyPassword() {
+            const pwd = prompt("請輸入系統管理密碼 (預設 0000)：");
+            if (pwd === "0000") {
+                return true;
+            } else if (pwd !== null) {
+                showToast("❌ 密碼錯誤，操作遭到拒絕！", "danger");
+            }
+            return false;
+        }
+
+        function handleSecureUpload() {
+            if (!verifyPassword()) return;
+            triggerAutoSave();
+            showToast("🔓 密碼正確！資料已成功上傳並儲存至伺服器。", "success");
+        }
+
+        function getField(row, possibleKeys) {
+            for (let pk of possibleKeys) {
+                let cleanPk = pk.replace(/[\s\r\n]+/g, '');
+                for (let rKey in row) {
+                    let cleanKey = rKey.replace(/[\s\r\n]+/g, '');
+                    if (!cleanKey) continue;
+                    if (cleanKey === cleanPk || cleanKey.includes(cleanPk) || (cleanPk.includes(cleanKey) && cleanKey.length >= 2)) {
+                        return row[rKey];
+                    }
+                }
+            }
+            return '';
+        }
+
+        function detectSystemByOrderNo(orderNo) {
+            let s = String(orderNo || '').trim();
+            if (s.startsWith('2')) return '206';
+            if (s.startsWith('7')) return '106';
+            return '106';
+        }
+
+        function parseStatus(val) {
+            if (!val) return '未去電';
+            let s = String(val).trim();
+            if (s === '' || s.includes('待撥') || s.includes('未去')) return '未去電';
+            if (s.includes('無人') || s.includes('未接')) return '去電無人';
+            if (s.includes('不需要') || s.includes('拒絕') || s.includes('取消')) return '客戶不需要';
+            if (s.includes('已派') || s.includes('近期') || s.includes('暫不約') || s.includes('派員')) return '近期已派員';
+            if (s.includes('已約') || s.includes('預約') || s.includes('確認')) return '已約';
+            return '其它'; 
+        }
+
+        function parseShift(val) {
+            if (!val) return '';
+            let s = String(val).trim().toLowerCase();
+            if (s.includes('早') || s.includes('morning') || s.includes('09') || s.includes('9點')) return 'morning';
+            if (s.includes('午') || s.includes('afternoon') || s.includes('13') || s.includes('下午')) return 'afternoon';
+            if (s.includes('晚') || s.includes('evening') || s.includes('18') || s.includes('晚上')) return 'evening';
+            return '';
+        }
+
+        function parseDateAndShift(rawDateVal, rawShiftVal) {
+            let dateStr = '';
+            let shiftStr = parseShift(rawShiftVal);
+
+            if (typeof rawDateVal === 'number') {
+                const date = new Date((rawDateVal - (25567 + 2)) * 86400 * 1000);
+                const yyyy = date.getFullYear();
+                const mm = String(date.getMonth() + 1).padStart(2, '0');
+                const dd = String(date.getDate()).padStart(2, '0');
+                dateStr = `${yyyy}-${mm}-${dd}`;
+            } else if (rawDateVal) {
+                let s = String(rawDateVal).trim();
+                let detectedShift = parseShift(s);
+                if (detectedShift && !shiftStr) {
+                    shiftStr = detectedShift;
+                }
+
+                let fullDateMatch = s.match(/(\d{4})[\/\.-](\d{1,2})[\/\.-](\d{1,2})/);
+                if (fullDateMatch) {
+                    let yyyy = fullDateMatch[1];
+                    let mm = String(fullDateMatch[2]).padStart(2, '0');
+                    let dd = String(fullDateMatch[3]).padStart(2, '0');
+                    dateStr = `${yyyy}-${mm}-${dd}`;
+                } else {
+                    let shortDateMatch = s.match(/(\d{1,2})[\/\.-](\d{1,2})/);
+                    if (shortDateMatch) {
+                        let yyyy = '2026';
+                        let mm = String(shortDateMatch[1]).padStart(2, '0');
+                        let dd = String(shortDateMatch[2]).padStart(2, '0');
+                        dateStr = `${yyyy}-${mm}-${dd}`;
+                    }
+                }
+            }
+            return { date: dateStr, shift: shiftStr };
+        }
+
+        // 彈性詢問是否保留名單：若點取消(不保留舊名單)，舊名單清空，但能量表設定完全保留繼續使用
+        function handleLeadsImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const keepOld = confirm("📌 匯入名單設定詢問：\n\n【確定】保留先前的名單與約工資料（並進行智慧更新）。\n【取消】清除先前的名單，匯入全新名單（注意：您的能量表容量與時段設定將會維持不變，繼續正常保存使用）。");
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
+
+                    if (json.length === 0) {
+                        showToast("❌ 匯入的 Excel 檔案沒有資料！", "danger");
+                        event.target.value = '';
+                        return;
+                    }
+
+                    const now = new Date();
+                    const uploadDayStr = `${now.getMonth() + 1}/${now.getDate()} (${now.getDate()}號)`;
+
+                    let existingBookedMap = {};
+                    if (keepOld) {
+                        leadsData.forEach(item => {
+                            if (item.orderNo && item.status === '已約' && item.appointmentDate) {
+                                existingBookedMap[item.orderNo] = {
+                                    status: item.status,
+                                    appointmentDate: item.appointmentDate,
+                                    shift: item.shift,
+                                    staff: item.staff,
+                                    notes: item.notes,
+                                    uploadDay: item.uploadDay || uploadDayStr
+                                };
+                            }
+                        });
+                    } else {
+                        leadsData = []; // 不保留舊名單時清空舊名單 (能量設定 energyConfig 不受影響，維持繼續使用)
+                    }
+
+                    const newParsedLeads = json.map((row, index) => {
+                        const orderNo = String(getField(row, ['訂編', 'orderNo', '訂單編號', '編號', '客編']) || '').trim();
+                        const systemCode = detectSystemByOrderNo(orderNo);
+                        const rawStatus = getField(row, ['去電紀錄', '去電記錄', '狀態', '去電情形', '去電紀']);
+                        const rawDate = getField(row, ['預約日期', '約工日期', '日期']);
+                        const rawShift = getField(row, ['預約時段', '時段', '班別']);
+                        const rawNotes = getField(row, ['約工備註', '備註', '備註欄', '說明', '約工備']);
+                        const rawStaff = getField(row, ['去電/派人員', 'staff', '人員', '去電人員']);
+
+                        let status = parseStatus(rawStatus);
+                        const parsedDS = parseDateAndShift(rawDate, rawShift);
+                        let appointmentDate = parsedDS.date;
+                        let shift = parsedDS.shift;
+
+                        if (appointmentDate) {
+                            status = '已約';
+                        }
+
+                        let finalStaff = String(rawStaff || '');
+                        let finalNotes = String(rawNotes || '');
+                        let finalUploadDay = uploadDayStr;
+
+                        if (keepOld && existingBookedMap[orderNo]) {
+                            const prev = existingBookedMap[orderNo];
+                            status = prev.status;
+                            appointmentDate = prev.appointmentDate;
+                            shift = prev.shift;
+                            if (prev.staff) finalStaff = prev.staff;
+                            if (prev.notes) finalNotes = prev.notes;
+                            if (prev.uploadDay) finalUploadDay = prev.uploadDay;
+                        }
+
+                        return {
+                            id: String(Date.now() + index),
+                            system: systemCode,
+                            node: String(getField(row, ['行政區/Node', 'node', '行政區', '行政']) || ''),
+                            orderNo: orderNo,
+                            service: String(getField(row, ['服務別', 'service', '服務']) || ''),
+                            reason: String(getField(row, ['派工原因', 'reason', '原因']) || ''),
+                            staff: finalStaff,
+                            status: status,
+                            appointmentDate: appointmentDate,
+                            shift: shift,
+                            notes: finalNotes,
+                            uploadDay: finalUploadDay
+                        };
+                    });
+
+                    if (keepOld) {
+                        const oldMap = {};
+                        leadsData.forEach(item => { oldMap[item.orderNo] = item; });
+                        newParsedLeads.forEach(item => {
+                            if (oldMap[item.orderNo]) {
+                                const oldItem = oldMap[item.orderNo];
+                                if (oldItem.status === '已約') {
+                                    item.status = oldItem.status;
+                                    item.appointmentDate = oldItem.appointmentDate;
+                                    item.shift = oldItem.shift;
+                                    item.staff = oldItem.staff || item.staff;
+                                    item.notes = oldItem.notes || item.notes;
+                                    item.uploadDay = oldItem.uploadDay;
+                                }
+                            }
+                            oldMap[item.orderNo] = item;
+                        });
+                        leadsData = Object.values(oldMap);
+                    } else {
+                        leadsData = newParsedLeads;
+                    }
+
+                    updateStaffDropdown();
+                    updateUploadDateDropdown();
+                    renderMatrixWeeklyTable();
+                    renderTable();
+                    updateHeaderStats();
+                    triggerAutoSave();
+                    showToast(`📁 成功匯入 ${newParsedLeads.length} 筆客戶資料（保留舊名單：${keepOld ? '是' : '否'}）！`, 'success');
+                } catch (err) {
+                    console.error(err);
+                    showToast("❌ 檔案解析失敗，請確認格式是否正確！", "danger");
+                }
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function triggerAutoSave() {
+            const indicator = document.getElementById('saveStatusIndicator');
+            if (indicator) {
+                indicator.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span><span class="text-amber-300 font-medium">儲存中...</span>`;
+            }
+
+            clearTimeout(saveDebounceTimer);
+            saveDebounceTimer = setTimeout(() => {
+                localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(leadsData));
+                localStorage.setItem(STORAGE_KEY_ENERGY, JSON.stringify(energyConfig));
+                saveDebounceTimer = null;
+                if (indicator) {
+                    indicator.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span>已自動存檔 (能量固定保留)`;
+                }
+            }, 300);
+        }
+
+        function loadFromStorage() {
+            const savedLeads = localStorage.getItem(STORAGE_KEY_LEADS);
+            const savedEnergy = localStorage.getItem(STORAGE_KEY_ENERGY);
+            const savedSize = localStorage.getItem(STORAGE_KEY_SIZE);
+
+            if (savedSize) setDisplaySize(savedSize);
+            if (savedLeads) leadsData = JSON.parse(savedLeads);
+            if (savedEnergy) energyConfig = JSON.parse(savedEnergy);
+        }
+
+        function updateStaffDropdown() {
+            const select = document.getElementById('staffFilterSelect');
+            if (!select) return;
+            const currentVal = select.value;
+            
+            const staffSet = new Set();
+            leadsData.forEach(item => {
+                if (item.staff && item.staff.trim() !== '') {
+                    staffSet.add(item.staff.trim());
+                }
+            });
+
+            select.innerHTML = '<option value="all">全部人員</option>';
+            staffSet.forEach(staffName => {
+                const opt = document.createElement('option');
+                opt.value = staffName;
+                opt.innerText = staffName;
+                if (staffName === currentVal) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function updateUploadDateDropdown() {
+            const select = document.getElementById('uploadDateFilterSelect');
+            if (!select) return;
+            const currentVal = select.value;
+
+            const dateSet = new Set();
+            leadsData.forEach(item => {
+                if (item.uploadDay && item.uploadDay.trim() !== '') {
+                    dateSet.add(item.uploadDay.trim());
+                }
+            });
+
+            select.innerHTML = '<option value="all">全部上傳日期</option>';
+            Array.from(dateSet).sort().reverse().forEach(dateStr => {
+                const opt = document.createElement('option');
+                opt.value = dateStr;
+                opt.innerText = dateStr;
+                if (dateStr === currentVal) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function clearAllFilters() {
+            currentFilterStatus = 'all';
+            currentEnergyFilter = { date: null, shift: null };
+            
+            const banner = document.getElementById('activeEnergyFilterBanner');
+            if (banner) {
+                banner.classList.remove('flex');
+                banner.classList.add('hidden');
+            }
+
+            ['all', '未去電', '去電無人', '其它', '客戶不需要', '近期已派員', '已約'].forEach(s => {
+                const btn = document.getElementById(`filterBtn_${s}`);
+                if (!btn) return;
+                if (s === 'all') {
+                    btn.className = "px-3 py-1 rounded-full bg-slate-800 text-white font-semibold transition shadow-sm";
+                } else {
+                    btn.className = "px-3 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition";
+                }
+            });
+
+            if (document.getElementById('uploadDateFilterSelect')) document.getElementById('uploadDateFilterSelect').value = 'all';
+            if (document.getElementById('systemFilterSelect')) document.getElementById('systemFilterSelect').value = 'all';
+            if (document.getElementById('staffFilterSelect')) document.getElementById('staffFilterSelect').value = 'all';
+            if (document.getElementById('searchInput')) document.getElementById('searchInput').value = '';
+
+            renderTable();
+            showToast("🧹 已清除所有篩選條件", "success");
+        }
+
+        function changeWeek(direction) {
+            weekOffset += direction;
+            renderMatrixWeeklyTable();
+        }
+
+        function resetWeek() {
+            weekOffset = 0;
+            renderMatrixWeeklyTable();
+        }
+
+        function openDayCapacityModal(dateStr) {
+            if (!verifyPassword()) return;
+            editingCapacityDate = dateStr;
+            const limits = energyConfig.dailyOverrides[dateStr] || energyConfig.batchLimits;
+            document.getElementById('dayCapacityModalTitle').innerText = `修改 ${dateStr} 各班容量`;
+            document.getElementById('inputCapMorning').value = limits.morning;
+            document.getElementById('inputCapAfternoon').value = limits.afternoon;
+            document.getElementById('inputCapEvening').value = limits.evening;
+            document.getElementById('dayCapacityModal').classList.remove('hidden');
+        }
+
+        function closeDayCapacityModal() {
+            document.getElementById('dayCapacityModal').classList.add('hidden');
+            editingCapacityDate = null;
+        }
+
+        function saveDayCapacity() {
+            if (!editingCapacityDate) return;
+            const m = parseInt(document.getElementById('inputCapMorning').value) || 0;
+            const a = parseInt(document.getElementById('inputCapAfternoon').value) || 0;
+            const e = parseInt(document.getElementById('inputCapEvening').value) || 0;
+
+            energyConfig.dailyOverrides[editingCapacityDate] = { morning: m, afternoon: a, evening: e };
+            triggerAutoSave();
+            renderMatrixWeeklyTable();
+            updateHeaderStats();
+            closeDayCapacityModal();
+            showToast(`⚡ ${editingCapacityDate} 單日容量已成功更新`, 'success');
+        }
+
+        function renderMatrixWeeklyTable() {
+            const thead = document.getElementById('matrixTableHead');
+            const tbody = document.getElementById('matrixTableBody');
+            if (!thead || !tbody) return;
+
+            const today = new Date();
+            const baseDate = new Date(today);
+            baseDate.setDate(today.getDate() + (weekOffset * 7));
+            
+            const currentDayOfWeek = baseDate.getDay() === 0 ? 6 : baseDate.getDay() - 1;
+            const startOfWeek = new Date(baseDate);
+            startOfWeek.setDate(baseDate.getDate() - currentDayOfWeek);
+
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+            const rangeLabel = document.getElementById('currentWeekRangeLabel');
+            if (rangeLabel) {
+                rangeLabel.innerText = `(${startOfWeek.toLocaleDateString()} ~ ${endOfWeek.toLocaleDateString()})`;
+            }
+
+            const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+            let dates = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(startOfWeek);
+                d.setDate(startOfWeek.getDate() + i);
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                dates.push({
+                    dateStr: `${yyyy}-${mm}-${dd}`,
+                    display: `${d.getMonth() + 1}月${d.getDate()}日 (${dayNames[d.getDay()]} )`
+                });
+            }
+
+            let headHtml = `<tr><th class="p-3 border-r bg-slate-200 text-slate-800 w-36">時段 \\ 日期</th>`;
+            dates.forEach(d => {
+                headHtml += `
+                    <th class="p-2 text-center border-r bg-slate-100">
+                        <div class="font-bold">${d.display}</div>
+                        <button onclick="openDayCapacityModal('${d.dateStr}')" class="mt-1 text-[10px] bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded font-mono shadow-2xs transition" title="點擊修改當日容量">
+                            ⚙️ 設容量
+                        </button>
+                    </th>
+                `;
+            });
+            headHtml += `</tr>`;
+            thead.innerHTML = headHtml;
+
+            const shifts = [
+                { key: 'morning', name: '☀️ 早時段' },
+                { key: 'afternoon', name: '🌤️ 午時段' },
+                { key: 'evening', name: '🌙 晚時段' }
+            ];
+
+            let bodyHtml = '';
+            shifts.forEach(shiftObj => {
+                bodyHtml += `<tr>`;
+                bodyHtml += `<td class="p-3 font-bold bg-slate-50 border-r align-top">
+                    <div>${shiftObj.name}</div>
+                    <div class="text-xs text-slate-400 font-normal mt-1">基準: <span id="cap-${shiftObj.key}">${energyConfig.batchLimits[shiftObj.key]}</span></div>
+                </td>`;
+
+                dates.forEach(d => {
+                    const limits = energyConfig.dailyOverrides[d.dateStr] || energyConfig.batchLimits;
+                    const capacity = limits[shiftObj.key] || 2;
+                    const bookedList = leadsData.filter(item => item.appointmentDate === d.dateStr && item.shift === shiftObj.key && item.status === '已約');
+
+                    bodyHtml += `<td class="p-2 border-r align-top space-y-2 bg-slate-50/50">`;
+                    
+                    for (let i = 0; i < capacity; i++) {
+                        if (i < bookedList.length) {
+                            const bItem = bookedList[i];
+                            const sysBadge = bItem.system === '206' ? '(206臺)' : '(106臺)';
+                            const badgeColor = bItem.system === '206' ? 'bg-indigo-100 text-indigo-900 border-indigo-300' : 'bg-emerald-100 text-emerald-900 border-emerald-300';
+                            bodyHtml += `
+                                <div class="p-2 rounded-lg border ${badgeColor} shadow-sm flex justify-between items-center text-xs">
+                                    <div class="font-mono font-bold flex items-center gap-1 cursor-pointer hover:underline" onclick="filterByEnergyDate('${d.dateStr}', '${shiftObj.key}')" title="點擊在下方表格篩選">
+                                        <span>🎫</span>
+                                        <span>${bItem.orderNo}</span>
+                                        <span class="text-[10px] opacity-75">${sysBadge}</span>
+                                    </div>
+                                    <button onclick="cancelAppointment('${bItem.id}')" class="text-red-500 hover:text-red-700 font-bold px-1" title="取消預約">&times;</button>
+                                </div>
+                            `;
+                        } else {
+                            bodyHtml += `
+                                <button onclick="openAssignModal('${d.dateStr}', '${shiftObj.key}')" class="w-full py-1.5 px-2 rounded-lg border border-dashed border-slate-300 bg-white hover:bg-indigo-50 hover:border-indigo-400 text-slate-500 hover:text-indigo-600 text-xs font-medium transition flex items-center justify-center gap-1 shadow-2xs">
+                                    <span>+ 可預約</span>
+                                </button>
+                            `;
+                        }
+                    }
+                    bodyHtml += `</td>`;
+                });
+                bodyHtml += `</tr>`;
+            });
+
+            tbody.innerHTML = bodyHtml;
+            updateEnergyStatisticsTable(dates);
+        }
+
+        function updateEnergyStatisticsTable(dates) {
+            let totalCap = 0;
+            let count106 = 0;
+            let count206 = 0;
+
+            dates.forEach(d => {
+                const limits = energyConfig.dailyOverrides[d.dateStr] || energyConfig.batchLimits;
+                totalCap += (limits.morning + limits.afternoon + limits.evening);
+            });
+
+            leadsData.forEach(item => {
+                if (item.status === '已約' && item.appointmentDate) {
+                    const isinWeek = dates.some(d => d.dateStr === item.appointmentDate);
+                    if (isinWeek) {
+                        if (item.system === '106') count106++;
+                        if (item.system === '206') count206++;
+                    }
+                }
+            });
+
+            const totalBooked = count106 + count206;
+            const remaining = Math.max(0, totalCap - totalBooked);
+
+            const elCap = document.getElementById('energyStatTotalCap');
+            const el106 = document.getElementById('energyStat106');
+            const el206 = document.getElementById('energyStat206');
+            const elRem = document.getElementById('energyStatRemaining');
+
+            if (elCap) elCap.innerText = `${totalCap} 席`;
+            if (el106) el106.innerText = `${count106} 筆 (7開頭)`;
+            if (el206) el206.innerText = `${count206} 筆 (2開頭)`;
+            if (elRem) elRem.innerText = `${remaining} 席`;
+        }
+
+        function openAssignModal(dateStr, shiftKey) {
+            targetingSlot = { date: dateStr, shift: shiftKey };
+            const shiftName = shiftKey === 'morning' ? '早時段' : shiftKey === 'afternoon' ? '午時段' : '晚時段';
+            document.getElementById('assignModalTitle').innerText = `指派客戶至：${dateStr} (${shiftName})`;
+            document.getElementById('assignSearchInput').value = '';
+            renderUnbookedList();
+            document.getElementById('assignModal').classList.remove('hidden');
+        }
+
+        function closeAssignModal() {
+            document.getElementById('assignModal').classList.add('hidden');
+            targetingSlot = { date: null, shift: null };
+        }
+
+        function renderUnbookedList() {
+            const container = document.getElementById('unbookedListContainer');
+            const keyword = document.getElementById('assignSearchInput').value.toLowerCase().trim();
+            if (!container) return;
+
+            const unbooked = leadsData.filter(item => {
+                if (item.status === '已約') return false;
+                if (keyword) {
+                    const combined = `${item.orderNo} ${item.node} ${item.reason}`.toLowerCase();
+                    if (!combined.includes(keyword)) return false;
+                }
+                return true;
+            });
+
+            if (unbooked.length === 0) {
+                container.innerHTML = `<div class="p-4 text-center text-slate-400 text-xs">沒有找到符合的未預約客戶</div>`;
+                return;
+            }
+
+            let html = '';
+            unbooked.forEach(item => {
+                const sysBadge = item.system === '206' ? '(206臺)' : '(106臺)';
+                html += `
+                    <div class="p-3 hover:bg-slate-50 flex justify-between items-center text-xs">
+                        <div>
+                            <div class="font-mono font-bold text-slate-800">${item.orderNo} <span class="text-indigo-600">${sysBadge}</span></div>
+                            <div class="text-slate-500 mt-0.5">區/Node: ${item.node || '無'} | 原因: ${item.reason || '無'}</div>
+                        </div>
+                        <button onclick="assignCustomerToSlot('${item.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg font-medium shadow-sm transition">
+                            指派約工 ⚡
+                        </button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function assignCustomerToSlot(itemId) {
+            const item = leadsData.find(d => d.id === itemId);
+            if (!item) return;
+
+            item.status = '已約';
+            item.appointmentDate = targetingSlot.date;
+            item.shift = targetingSlot.shift;
+
+            triggerAutoSave();
+            renderMatrixWeeklyTable();
+            renderTable();
+            updateHeaderStats();
+            closeAssignModal();
+            showToast(`✅ 成功將訂編 ${item.orderNo} 安排至 ${targetingSlot.date}！`, 'success');
+        }
+
+        function cancelAppointment(itemId) {
+            const item = leadsData.find(d => d.id === itemId);
+            if (!item) return;
+
+            item.status = '未去電';
+            item.appointmentDate = '';
+            item.shift = '';
+
+            triggerAutoSave();
+            renderMatrixWeeklyTable();
+            renderTable();
+            updateHeaderStats();
+            showToast(`🔄 已取消訂編 ${item.orderNo} 的預約時段`, 'success');
+        }
+
+        function filterByEnergyDate(dateStr, shift) {
+            currentEnergyFilter = { date: dateStr, shift: shift };
+            const banner = document.getElementById('activeEnergyFilterBanner');
+            const textEl = document.getElementById('activeEnergyFilterText');
+            if (banner && textEl) {
+                banner.classList.remove('hidden');
+                banner.classList.add('flex');
+                const shiftName = shift === 'morning' ? '早時段' : shift === 'afternoon' ? '午時段' : '晚時段';
+                textEl.innerText = `篩選能量：${dateStr} (${shiftName})`;
+            }
+            renderTable();
+        }
+
+        function clearEnergyFilter() {
+            currentEnergyFilter = { date: null, shift: null };
+            const banner = document.getElementById('activeEnergyFilterBanner');
+            if (banner) {
+                banner.classList.remove('flex');
+                banner.classList.add('hidden');
+            }
+            renderTable();
+        }
+
+        function filterBookedBySystem(sysCode) {
+            const systemSelect = document.getElementById('systemFilterSelect');
+            if (systemSelect) systemSelect.value = sysCode;
+            filterStatus('已約');
+            showToast(`🔍 已連動篩選：${sysCode}系統台已約客戶`, 'success');
+        }
+
+        function filterStatus(status) {
+            currentFilterStatus = status;
+            ['all', '未去電', '去電無人', '其它', '客戶不需要', '近期已派員', '已約'].forEach(s => {
+                const btn = document.getElementById(`filterBtn_${s}`);
+                if (!btn) return;
+                if (s === status) {
+                    btn.className = "px-3 py-1 rounded-full bg-slate-800 text-white font-semibold transition shadow-sm";
+                } else {
+                    btn.className = "px-3 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition";
+                }
+            });
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('leadsTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const uploadDateFilter = document.getElementById('uploadDateFilterSelect').value;
+            const systemFilter = document.getElementById('systemFilterSelect').value;
+            const staffFilter = document.getElementById('staffFilterSelect').value;
+            const searchKeyword = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            let filtered = leadsData.filter(item => {
+                if (currentFilterStatus !== 'all' && item.status !== currentFilterStatus) return false;
+                if (uploadDateFilter !== 'all' && item.uploadDay !== uploadDateFilter) return false;
+                if (systemFilter !== 'all' && item.system !== systemFilter) return false;
+                if (staffFilter !== 'all' && item.staff !== staffFilter) return false;
+                if (currentEnergyFilter.date && (item.appointmentDate !== currentEnergyFilter.date || item.shift !== currentEnergyFilter.shift)) return false;
+                if (searchKeyword) {
+                    const combined = `${item.orderNo} ${item.notes} ${item.node} ${item.staff || ''}`.toLowerCase();
+                    if (!combined.includes(searchKeyword)) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-slate-400 font-medium">沒有符合條件的客戶資料</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const hasValidAppointment = item.status === '已約' || (item.appointmentDate && item.appointmentDate.trim() !== '');
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-xs text-slate-500 font-semibold">${item.uploadDay || '-'}</td>
+                    <td class="p-3 font-mono font-medium text-indigo-900">${item.system} 系統台</td>
+                    <td class="p-3 text-slate-600">${item.node || ''}</td>
+                    <td class="p-3 font-mono font-bold text-slate-800">${item.orderNo}</td>
+                    <td class="p-3"><span class="bg-slate-100 px-2 py-0.5 rounded text-xs">${item.service || ''}</span></td>
+                    <td class="p-3 text-slate-600">${item.reason || ''}</td>
+                    <td class="p-3">
+                        <input type="text" value="${item.staff || ''}" onchange="updateItemStaff('${item.id}', this.value)" placeholder="輸入人員..." class="bg-white border border-slate-300 rounded px-2 py-1 text-xs w-28 outline-none font-medium text-slate-700">
+                    </td>
+                    <td class="p-3">
+                        <select onchange="updateItemStatus('${item.id}', this.value)" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs outline-none font-medium">
+                            <option value="未去電" ${item.status === '未去電' ? 'selected' : ''}>📞 待撥打</option>
+                            <option value="去電無人" ${item.status === '去電無人' ? 'selected' : ''}>⏳ 去電無人</option>
+                            <option value="其它" ${item.status === '其它' ? 'selected' : ''}>💬 其它</option>
+                            <option value="客戶不需要" ${item.status === '客戶不需要' ? 'selected' : ''}>🚫 客戶不需要</option>
+                            <option value="近期已派員" ${item.status === '近期已派員' ? 'selected' : ''}>⏱️ 近期已派員</option>
+                            <option value="已約" ${item.status === '已約' ? 'selected' : ''}>✅ 已預約</option>
+                        </select>
+                    </td>
+                    <td class="p-3">
+                        <input type="date" value="${item.appointmentDate || ''}" onchange="updateItemDate('${item.id}', this.value)" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs outline-none">
+                    </td>
+                    <td class="p-3">
+                        <select onchange="updateItemShift('${item.id}', this.value)" class="bg-white border border-slate-300 rounded px-2 py-1 text-xs outline-none">
+                            <option value="" ${!hasValidAppointment || !item.shift ? 'selected' : ''}>-- 無時段 --</option>
+                            <option value="morning" ${hasValidAppointment && item.shift === 'morning' ? 'selected' : ''}>☀️ 早時段 (09-12)</option>
+                            <option value="afternoon" ${hasValidAppointment && item.shift === 'afternoon' ? 'selected' : ''}>🌤️ 午時段 (13-17)</option>
+                            <option value="evening" ${hasValidAppointment && item.shift === 'evening' ? 'selected' : ''}>🌙 晚時段 (18-20)</option>
+                        </select>
+                    </td>
+                    <td class="p-3">
+                        <input type="text" value="${item.notes || ''}" onchange="updateItemNotes('${item.id}', this.value)" placeholder="輸入備註..." class="bg-white border border-slate-300 rounded px-2 py-1 text-xs w-full outline-none">
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateItemStaff(id, newStaff) {
+            const item = leadsData.find(d => d.id === id);
+            if (!item) return;
+            item.staff = newStaff;
+            updateStaffDropdown();
+            triggerAutoSave();
+        }
+
+        function updateItemStatus(id, newStatus) {
+            const item = leadsData.find(d => d.id === id);
+            if (!item) return;
+            item.status = newStatus;
+
+            if (newStatus !== '已約') {
+                item.appointmentDate = '';
+                item.shift = '';
+            }
+
+            triggerAutoSave();
+            renderMatrixWeeklyTable();
+            updateHeaderStats();
+            renderTable();
+        }
+
+        function updateItemDate(id, newDate) {
+            const item = leadsData.find(d => d.id === id);
+            if (!item) return;
+            item.appointmentDate = newDate;
+            if (newDate) {
+                item.status = '已約';
+            } else if (item.status !== '已約') {
+                item.shift = '';
+            }
+            triggerAutoSave();
+            renderMatrixWeeklyTable();
+            updateHeaderStats();
+            renderTable();
+        }
+
+        function updateItemShift(id, newShift) {
+            const item = leadsData.find(d => d.id === id);
+            if (!item) return;
+            item.shift = newShift;
+            triggerAutoSave();
+            renderMatrixWeeklyTable();
+            updateHeaderStats();
+        }
+
+        function updateItemNotes(id, newNotes) {
+            const item = leadsData.find(d => d.id === id);
+            if (!item) return;
+            item.notes = newNotes;
+            triggerAutoSave();
+        }
+
+        function updateHeaderStats() {
+            let total106 = 0, booked106 = 0;
+            let total206 = 0, booked206 = 0;
+            let todayMorning = 0, todayAfternoon = 0, todayEvening = 0;
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+            leadsData.forEach(item => {
+                if (item.system === '106') {
+                    total106++;
+                    if (item.status === '已約') booked106++;
+                } else if (item.system === '206') {
+                    total206++;
+                    if (item.status === '已約') booked206++;
+                }
+
+                if (item.appointmentDate === todayStr && item.status === '已約') {
+                    if (item.shift === 'morning') todayMorning++;
+                    else if (item.shift === 'afternoon') todayAfternoon++;
+                    else if (item.shift === 'evening') todayEvening++;
+                }
+            });
+
+            document.getElementById('statSys106').innerHTML = `${total106} <span class="card-text font-normal text-slate-500">筆總數</span>`;
+            document.getElementById('statSys106Booked').innerHTML = `✅ 已約：${booked106} 筆 🔍(點擊連動)`;
+
+            document.getElementById('statSys260').innerHTML = `${total206} <span class="card-text font-normal text-slate-500">筆總數</span>`;
+            document.getElementById('statSys260Booked').innerHTML = `✅ 已約：${booked206} 筆 🔍(點擊連動)`;
+
+            const limits = energyConfig.dailyOverrides[todayStr] || energyConfig.batchLimits;
+            document.getElementById('statMorningText').innerText = `${todayMorning}/${limits.morning}`;
+            document.getElementById('statAfternoonText').innerText = `${todayAfternoon}/${limits.afternoon}`;
+            document.getElementById('statEveningText').innerText = `${todayEvening}/${limits.evening}`;
+        }
+
+        function changeBatch(shift, delta) {
+            if (!verifyPassword()) return;
+            energyConfig.batchLimits[shift] = Math.max(0, energyConfig.batchLimits[shift] + delta);
+            document.getElementById(`batch-${shift}`).innerText = energyConfig.batchLimits[shift];
+            triggerAutoSave();
+            renderMatrixWeeklyTable();
+            showToast("⚡ 容量基準已更新", "success");
+        }
+
+        function openAnalysisModal() {
+            const modal = document.getElementById('analysisModal');
+            const content = document.getElementById('analysisContent');
+            let bookedCount = leadsData.filter(i => i.status === '已約').length;
+            let totalCount = leadsData.length;
+            let rate = totalCount > 0 ? ((bookedCount / totalCount) * 100).toFixed(1) : 0;
+            let b106 = leadsData.filter(i => i.system === '106' && i.status === '已約').length;
+            let b206 = leadsData.filter(i => i.system === '206' && i.status === '已約').length;
+
+            content.innerHTML = `
+                <p><strong>總客戶名單筆數：</strong> ${totalCount} 筆</p>
+                <p><strong>106系統已約筆數 (7開頭)：</strong> ${b106} 筆</p>
+                <p><strong>206系統已約筆數 (2開頭)：</strong> ${b206} 筆</p>
+                <p><strong>整體約修成功率：</strong> ${rate}%</p>
+                <p class="text-xs text-slate-500 mt-2">已支援彈性保留舊名單、上傳日期篩選與一鍵清除篩選功能。</p>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function closeAnalysisModal() {
+            document.getElementById('analysisModal').classList.add('hidden');
+        }
+
+        function confirmReset() {
+            if (confirm("確定要重載頁面嗎？")) {
+                location.reload();
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `p-3 rounded-xl shadow-lg text-white font-medium text-sm transition-all duration-300 ${type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`;
+            toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        function exportData() {
+            const ws = XLSX.utils.json_to_sheet(leadsData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "約修名單");
+            XLSX.writeFile(wb, "自主維修約修報表.xlsx");
+            showToast("💾 匯出 Excel 成功！", "success");
+        }
+
+        function exportEnergyTable() {
+            const ws = XLSX.utils.json_to_sheet([energyConfig.batchLimits]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "能量表設定");
+            XLSX.writeFile(wb, "能量表設定報表.xlsx");
+            showToast("📊 匯出能量設定成功！", "success");
+        }
+    </script>
+</body>
+</html>
